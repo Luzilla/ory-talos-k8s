@@ -1,0 +1,243 @@
+apiVersion: v1
+data:
+  config.yaml: |
+    serve:
+      http:
+        host: 0.0.0.0
+        port: 4420
+        request_log:
+          exclude_health_endpoints: true
+        cors:
+          enabled: true
+          allowed_origins:
+            - http://localhost:3001
+          allowed_methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - PATCH
+          allowed_headers:
+            - Content-Type
+            - Authorization
+          exposed_headers:
+            - Content-Type
+          allow_credentials: true
+          max_age: 86400
+          debug: false
+    credentials:
+      api_keys:
+        default_ttl: 720h
+        max_ttl: 8760h
+        prefix:
+          current: talos
+          retired: []
+      derived_tokens:
+        default_ttl: 1h
+        jwt:
+          signing_keys:
+            urls:
+              - base64://eyAgImtleXMiOiBbICAgIHsgICAgICAiYWxnIjogIkVkRFNBIiwgICAgICAiY3J2IjogIkVkMjU1MTkiLCAgICAgICJkIjogIjl3VTNfV3p0dmx3TXg0SGlfN2dsSVduY09XNlVIR2I5amxDdDZEZkVGa2MiLCAgICAgICJraWQiOiAiZG9ja2VyLWRldi0wMDEiLCAgICAgICJrdHkiOiAiT0tQIiwgICAgICAidXNlIjogInNpZyIsICAgICAgIngiOiAiNGtTQTdtNU5jYnFDUC1mZk9fNGhQM2tsNHB0NGctLTNRQ21zQmwzb05lVSIgICAgfSAgXX0=
+        macaroon:
+          prefix:
+            current: mc
+            retired: []
+      issuer: https://api.talos.local
+    db:
+      dsn: sqlite3:///var/lib/talos/talos.db?_journal_mode=WAL
+    log:
+      level: info
+      format: json
+    secrets:
+      hmac:
+        current: docker-compose-hmac-secret-minimum-32-chars-long
+        retired: []
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-config
+  namespace: ory-talos
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-jwks
+  namespace: ory-talos
+stringData:
+  jwks.json: |-
+    {
+      "keys": [
+        {
+          "kty": "RSA",
+          "kid": "test-key-1",
+          "use": "sig",
+          "alg": "RS256",
+          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+          "e": "AQAB"
+        }
+      ]
+    }
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos
+  namespace: ory-talos
+spec:
+  ports:
+    - name: http
+      port: 4420
+      protocol: TCP
+      targetPort: 4420
+  selector:
+    app.kubernetes.io/name: ory-talos
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-headless
+  namespace: ory-talos
+spec:
+  clusterIP: None
+  ports:
+    - name: http
+      port: 4420
+      protocol: TCP
+      targetPort: 4420
+  selector:
+    app.kubernetes.io/name: ory-talos
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos
+  namespace: ory-talos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ory-talos
+  serviceName: ory-talos-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ory-talos
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - args:
+            - serve
+            - --config
+            - /etc/talos/config.yaml
+          image: oryd/talos:v26.2.0@sha256:4bf9171a8da1ec75e05d6aa6e79afb8c7b5addb045e09b20c07c27f802795fb9
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /health/alive
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          name: backend
+          ports:
+            - containerPort: 4420
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            privileged: false
+          volumeMounts:
+            - mountPath: /etc/talos/config.yaml
+              name: config
+              readOnly: true
+              subPath: config.yaml
+            - mountPath: /etc/talos/jwks.json
+              name: jwks
+              readOnly: true
+              subPath: jwks.json
+            - mountPath: /var/lib/talos
+              name: data
+      initContainers:
+        - args:
+            - migrate
+            - up
+          command:
+            - talos
+          env:
+            - name: DB_DSN
+              value: sqlite3:///var/lib/talos/talos.db?_journal_mode=WAL
+          image: oryd/talos:v26.2.0@sha256:4bf9171a8da1ec75e05d6aa6e79afb8c7b5addb045e09b20c07c27f802795fb9
+          imagePullPolicy: IfNotPresent
+          name: db-init
+          resources:
+            limits:
+              cpu: 250m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            privileged: false
+          volumeMounts:
+            - mountPath: /var/lib/talos
+              name: data
+      volumes:
+        - configMap:
+            name: ory-talos-config
+          name: config
+        - name: jwks
+          secret:
+            secretName: ory-talos-jwks
+  volumeClaimTemplates:
+    - metadata:
+        labels:
+          app.kubernetes.io/managed-by: timoni
+          app.kubernetes.io/name: ory-talos
+          app.kubernetes.io/version: 0.0.0-devel
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+---
+

@@ -1,0 +1,20 @@
+# Documentation directory is intentionally untracked.
+/docs/
+
+# Build outputs
+/dist/
+
+# CUE module vendoring — user-local only. gen/ and pkg/ are committed.
+**/cue.mod/usr/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Local secrets used with @embed() — see Risks in spec
+secrets/
+
+# Test artifacts
+/tmp/
+*.tmp
