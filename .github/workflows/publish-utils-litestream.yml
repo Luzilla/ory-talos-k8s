@@ -1,0 +1,67 @@
+name: publish utils/litestream
+
+# Publishes the utils/litestream CUE module to the CUE Central Registry
+# (registry.cue.works) when a tag like utils/litestream/v0.1.0 is pushed.
+# Authentication uses GitHub OIDC — no PAT or registry secret required.
+# The module path's GitHub prefix
+# (github.com/luzilla/ory-talos-k8s/utils/litestream) must be claimed on
+# registry.cue.works by a member of the GitHub org first; that is a
+# one-time UI step.
+
+on:
+  push:
+    tags:
+      - 'utils/litestream/v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: utils/litestream
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: cue-lang/setup-cue@a93fa358375740cd8b0078f76355512b9208acb1 # v1.0.1
+        with:
+          version: v0.15.0
+
+      - name: Resolve version
+        id: version
+        working-directory: .
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          # tag is utils/litestream/vX.Y.Z — strip the prefix
+          v="${REF_NAME#utils/litestream/}"
+
+          if [[ ! "${v}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::version '${v}' is not a valid semver vX.Y.Z"
+            exit 1
+          fi
+          echo "version=${v}" >> "$GITHUB_OUTPUT"
+
+      - name: cue mod tidy
+        run: cue mod tidy
+
+      - name: Verify no diff after tidy
+        run: |
+          if ! git diff --quiet -- .; then
+            echo "::error::cue mod tidy produced changes — commit them before tagging"
+            git --no-pager diff -- .
+            exit 1
+          fi
+
+      - name: cue vet
+        run: cue vet ./litestream/...
+
+      - name: cue mod publish
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: cue mod publish "${VERSION}"
