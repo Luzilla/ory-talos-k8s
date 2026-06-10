@@ -2,12 +2,7 @@ name: publish utils/litestream
 
 # Publishes the utils/litestream CUE module to the CUE Central Registry
 # (registry.cue.works) when a tag like utils/litestream/v0.1.0 is pushed.
-# Authentication uses GitHub OIDC — no PAT or registry secret required.
-# The module path's GitHub prefix
-# (github.com/luzilla/ory-talos-k8s/utils/litestream) must be claimed on
-# registry.cue.works by a member of the GitHub org first; that is a
-# one-time UI step.
-
+# Authentication uses GitHub OIDC.
 on:
   push:
     tags:
@@ -48,8 +43,7 @@ jobs:
           fi
           echo "version=${v}" >> "$GITHUB_OUTPUT"
 
-      - name: cue mod tidy
-        run: cue mod tidy
+      - run: cue mod tidy
 
       - name: Verify no diff after tidy
         run: |
@@ -59,10 +53,10 @@ jobs:
             exit 1
           fi
 
-      - name: cue vet
-        run: cue vet ./litestream/...
+      - run: cue vet ./litestream/...
 
-      - name: cue mod publish
-        env:
+      - uses: cue-labs/registry-login-action@66d40052b0206031343e17173425fa10508968d0 # v1.0.3
+
+      - env:
           VERSION: ${{ steps.version.outputs.version }}
         run: cue mod publish "${VERSION}"
