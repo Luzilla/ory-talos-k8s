@@ -60,3 +60,4 @@ jobs:
 
       - run: cue mod tidy
       - run: cue vet ./litestream
+      - run: cue mod publish --dry-run --json v0.1.0
