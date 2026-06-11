@@ -1,20 +1,16 @@
 # utils/litestream
 
-A CUE library for embedding a [Litestream](https://litestream.io) sidecar in
-another module's pod spec. Replicates a single SQLite file to an
-S3-compatible store.
+A CUE library for embedding a [Litestream](https://litestream.io)
+sidecar in another module's pod spec. Replicates a single SQLite
+database to an S3-compatible store.
 
 Published to the CUE Central Registry as
 `github.com/luzilla/ory-talos-k8s/utils/litestream`.
 
-## What this is — and isn't
+## What this is
 
-This is a **CUE library**, not a workload module. It deploys nothing on
-its own — it exports definitions you compose into your own pod spec.
-
-The reason: Litestream needs filesystem access to the SQLite file, so it
-must run in the same pod as the database writer. A standalone module
-cannot achieve that.
+This is a **CUE library** which exports definitions you compose into your
+own pod spec.
 
 ## Install
 
@@ -42,8 +38,7 @@ import litestream "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
 ## Limits
 
 - AWS-compatible replicas only (S3, R2, MinIO via custom endpoint).
-- One database per Litestream config — multi-DB pods can call the library
-  multiple times with different names.
+- One database per Litestream config.
 - No `#Restore` initContainer yet — a fresh pod will not automatically
   rehydrate from S3. Add that yourself if you need it.
 
@@ -56,10 +51,7 @@ import litestream "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
 Tag with the prefix `utils/litestream/` and push:
 
 ```sh
-git tag utils/litestream/v0.1.0
-git push origin utils/litestream/v0.1.0
+make release TAG=v0.1.0
 ```
 
-The `.github/workflows/publish-utils-litestream.yml` workflow runs
-`cue mod tidy && cue vet && cue mod publish` against the CUE Central
-Registry, authenticated via GitHub OIDC (no PAT required).
+The [`.publish-utils-litestream.yml`](../../.github/workflows/publish-utils-litestream.yml) workflow publishes the module to the CUE Central Registry.
