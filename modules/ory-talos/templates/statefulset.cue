@@ -3,10 +3,24 @@ package templates
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	ls "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
 )
 
 #StatefulSet: appsv1.#StatefulSet & {
-	#config:    #Config
+	#config:  #Config
+	#lsNames: ls.#Names
+
+	// Bind the outer #config to a local name so nested `#config:` fields
+	// (e.g. inside ls.#Sidecar) can reach it without shadowing.
+	let cfg = #config
+
+	// Data-volume mount shared by db-init, backend, and the litestream
+	// sidecar. Declared once so all three containers agree on the path.
+	_dataMount: corev1.#VolumeMount & {
+		name:      "data"
+		mountPath: "/var/lib/talos"
+	}
+
 	apiVersion: "apps/v1"
 	kind:       "StatefulSet"
 	metadata: {
@@ -33,23 +47,41 @@ import (
 				if #config.podSecurityContext != _|_ {
 					securityContext: #config.podSecurityContext
 				}
-				initContainers: [{
-					name:            "db-init"
-					image:           #config.image.reference
-					imagePullPolicy: #config.image.pullPolicy
-					command: ["talos"]
-					args: [
-						"migrate", "up",
-					]
-					env: [
-						{name: "DB_DSN", value: #config.config.db.dsn},
-					]
-					volumeMounts: [
-						{name: "data", mountPath: "/var/lib/talos"},
-					]
-					resources:       #config.initResources
-					securityContext: #config.securityContext
-				}]
+				initContainers: [
+					// Restore runs BEFORE db-init so migrations see a
+					// rehydrated database on a fresh pod. Idempotent
+					// (-if-db-not-exists / -if-replica-exists) so a warm
+					// pod or empty replica is a no-op.
+					if cfg.litestream.valid {
+						ls.#Restore & {
+							#config:    cfg.litestream
+							#names:     #lsNames
+							#dataMount: _dataMount
+						}
+					},
+					{
+						name:            "db-init"
+						image:           #config.image.reference
+						imagePullPolicy: #config.image.pullPolicy
+						command: ["talos"]
+						args: [
+							"migrate", "up",
+						]
+						env: [
+							{name: "DB_DSN", value: #config.config.db.dsn},
+						]
+						volumeMounts: [_dataMount]
+						resources:       #config.initResources
+						securityContext: #config.securityContext
+					},
+					if cfg.litestream.valid {
+						ls.#Sidecar & {
+							#config:    cfg.litestream
+							#names:     #lsNames
+							#dataMount: _dataMount
+						}
+					},
+				]
 				containers: [{
 					name:            "backend"
 					image:           #config.image.reference
@@ -75,7 +107,7 @@ import (
 					volumeMounts: [
 						{name: "config", mountPath: "/etc/talos/config.yaml", subPath: "config.yaml", readOnly: true},
 						{name: "jwks", mountPath:   "/etc/talos/jwks.json", subPath:   "jwks.json", readOnly: true},
-						{name: "data", mountPath:   "/var/lib/talos"},
+						_dataMount,
 					]
 					resources:       #config.resources
 					securityContext: #config.securityContext
@@ -88,6 +120,9 @@ import (
 					{
 						name: "jwks"
 						secret: secretName: "\(#config.metadata.name)-jwks"
+					},
+					if cfg.litestream.valid {
+						ls.#ConfigVolume & {#names: #lsNames}
 					},
 				]
 			}

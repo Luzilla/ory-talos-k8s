@@ -34,6 +34,26 @@ bundle: {
 				jwks: """
 					{"keys":[{"kty":"oct","kid":"replace-me","alg":"HS256","k":"replace-me"}]}
 					"""
+
+				// Uncomment to enable the Litestream sidecar. The library's
+				// `valid` gate requires enabled + bucket + region + creds,
+				// so all four must be present or nothing renders.
+				// endpoint is optional — leave empty for AWS S3, or set it
+				// for R2 / MinIO / another S3-compatible store. MinIO also
+				// needs forcePathStyle: true.
+				// litestream: {
+				//   enabled: true
+				//   replica: {
+				//     bucket:         "talos-backups-dev"
+				//     region:         "whatever"
+				//     endpoint:       "https://s3.example.org"
+				//     forcePathStyle: true
+				//   }
+				//   credentials: {
+				//     accessKeyId:     "REPLACE-ME"
+				//     secretAccessKey: "REPLACE-ME"
+				//   }
+				// }
 			}
 		}
 	}
