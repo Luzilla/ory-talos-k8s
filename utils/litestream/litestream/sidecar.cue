@@ -9,9 +9,11 @@ import corev1 "cue.dev/x/k8s.io/api/core/v1"
 // #dataMount is the consumer's data volume mount — the same PVC mount
 // that exposes the SQLite file to the main container.
 #Sidecar: corev1.#Container & {
-	#config:    #Config
-	#names:     #Names
-	#dataMount: corev1.#VolumeMount
+	#config: #Config
+	#names:  #Names
+	#dataMount: corev1.#VolumeMount & {
+		readOnly?: false
+	}
 
 	name:            "litestream"
 	image:           "\(#config.image.repository):\(#config.image.tag)@\(#config.image.digest)"

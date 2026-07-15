@@ -133,3 +133,25 @@ tcSecret: lib.#Secret & {
 tcSecret: metadata: name:                   "foo-litestream-creds"
 tcSecret: stringData: AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE"
 tcSecret: stringData: AWS_SECRET_ACCESS_KEY: "secret"
+
+// #Restore renders a one-shot init container that runs `litestream
+// restore` with idempotent guards and the user's dbPath.
+tcRestore: lib.#Restore & {
+	#config: tcFull
+	#names: {
+		configMap: "foo-litestream-config"
+		secret:    "foo-litestream-creds"
+	}
+	#dataMount: {
+		name:      "data"
+		mountPath: "/var/lib/foo"
+	}
+}
+tcRestore: name: "litestream-restore"
+tcRestore: args: [
+	"restore",
+	"-config", "/etc/litestream/litestream.yml",
+	"-if-db-not-exists",
+	"-if-replica-exists",
+	"/var/lib/foo/db.sqlite",
+]
