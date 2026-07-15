@@ -59,5 +59,6 @@ jobs:
           version: v0.15.0
 
       - run: cue mod tidy
-      - run: cue vet ./litestream
-      - run: cue mod publish --dry-run --json v0.1.0
+      - run: make test
+      # dummy version — the real version comes from the git tag on publish.
+      - run: cue mod publish --dry-run --json v0.0.0-dev
