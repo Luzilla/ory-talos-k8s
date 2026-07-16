@@ -18,3 +18,5 @@ secrets/
 # Test artifacts
 /tmp/
 *.tmp
+
+tests/dev-values-litestream.local.cue

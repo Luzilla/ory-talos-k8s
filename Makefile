@@ -6,6 +6,7 @@ MODULE_DIR       := ./modules/ory-talos
 BUNDLE_FILE      := ./docs/bundles/ory-talos.cue
 DEV_VALUES       := ./tests/dev-values.cue
 DEV_VALUES_LS    := ./tests/dev-values-litestream.cue
+DEV_VALUES_LOCAL := ./tests/dev-values-litestream.local.cue
 INSTANCE_NAME    := ory-talos
 INSTANCE_NS      := ory-talos
 DIST_DIR         := ./dist
@@ -16,7 +17,7 @@ GOLDEN_LS        := ./tests/golden/manifests-litestream.yaml
 KIND_CLUSTER     := talos-dev
 KUBE_VERSION     := 1.29.0
 
-.PHONY: all lint test build run-dev update-golden setup teardown clean help verify
+.PHONY: all lint test build run-dev run-dev-litestream update-golden setup teardown clean help verify
 
 .DEFAULT_GOAL := help
 
@@ -68,6 +69,17 @@ run-dev: ## apply against current Kubernetes context
 	timoni apply $(INSTANCE_NAME) $(MODULE_DIR) \
 		-n $(INSTANCE_NS) \
 		--values $(DEV_VALUES)
+
+run-dev-litestream: ## apply with litestream enabled, using real creds from $(DEV_VALUES_LOCAL)
+	@if [ ! -f $(DEV_VALUES_LOCAL) ]; then \
+		echo "missing $(DEV_VALUES_LOCAL) — create it and retry" >&2; \
+		exit 1; \
+	fi
+	kubectl get namespace $(INSTANCE_NS) >/dev/null 2>&1 || kubectl create namespace $(INSTANCE_NS)
+	timoni apply $(INSTANCE_NAME) $(MODULE_DIR) \
+		-n $(INSTANCE_NS) \
+		--values $(DEV_VALUES_LS) \
+		--values $(DEV_VALUES_LOCAL)
 
 setup: ## create kind cluster and switch context
 	@if ! command -v kind >/dev/null 2>&1; then \
