@@ -41,10 +41,10 @@ import corev1 "cue.dev/x/k8s.io/api/core/v1"
 
 	image: {
 		repository: *"litestream/litestream" | string
-		tag:        *"0.3.13" | string
+		tag:        *"0.5.14" | string
 		// digest is the source of truth; tag is for log readability.
-		// Default pins litestream/litestream:0.3.13 (multi-arch index).
-		digest:     *"sha256:027eda2a89a86015b9797d2129d4dd447e8953097b4190e1d5a30b73e76d8d58" | string & =~"^(sha256:[0-9a-f]{64})?$"
+		// Default pins litestream/litestream:0.5.14 (multi-arch index).
+		digest:     *"sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941" | string & =~"^(sha256:[0-9a-f]{64})?$"
 		pullPolicy: *"IfNotPresent" | "Always" | "Never"
 	}
 
