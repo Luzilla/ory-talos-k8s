@@ -136,7 +136,7 @@ tcSecret: lib.#Secret & {
 		labels: app: "foo"
 	}
 }
-tcSecret: metadata: name:                   "foo-litestream-creds"
+tcSecret: metadata: name:                    "foo-litestream-creds"
 tcSecret: stringData: AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE"
 tcSecret: stringData: AWS_SECRET_ACCESS_KEY: "secret"
 
