@@ -48,6 +48,13 @@ import corev1 "cue.dev/x/k8s.io/api/core/v1"
 		pullPolicy: *"IfNotPresent" | "Always" | "Never"
 	}
 
+	logging: {
+		level:  *"info" | "trace" | "debug" | "warn" | "error"
+		type:   *"text" | "json" | "pretty"
+		stderr: *false | true
+		source: *false | true
+	}
+
 	// Absolute path to the SQLite file inside the pod. Consumers derive
 	// this from their own DSN — for ory-talos this is the path stripped
 	// from "sqlite3://<path>?<query>". Empty disables rendering.
