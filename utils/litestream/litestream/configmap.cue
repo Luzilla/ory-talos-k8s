@@ -24,9 +24,13 @@ import (
 		// containerPort 9090 and probes /metrics; without this the port
 		// would be closed and probes would fail.
 		addr: ":9090"
+		snapshot: {
+			interval:  #config.replica.snapshotInterval
+			retention: #config.replica.retention
+		}
 		dbs: [{
 			path: #config.dbPath
-			replicas: [{
+			replica: {
 				type:   #config.replica.type
 				bucket: #config.replica.bucket
 				path:   #config.replica.path
@@ -34,11 +38,9 @@ import (
 				if #config.replica.endpoint != "" {
 					endpoint: #config.replica.endpoint
 				}
-				"force-path-style":  #config.replica.forcePathStyle
-				retention:           #config.replica.retention
-				"snapshot-interval": #config.replica.snapshotInterval
-				"sync-interval":     #config.replica.syncInterval
-			}]
+				"force-path-style": #config.replica.forcePathStyle
+				"sync-interval":    #config.replica.syncInterval
+			}
 		}]
 	})
 }
