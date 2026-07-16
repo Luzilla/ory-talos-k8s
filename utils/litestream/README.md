@@ -33,14 +33,13 @@ import litestream "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
 | `#ConfigMap` | Renders the Litestream `litestream.yml` ConfigMap. |
 | `#Secret` | Renders an Opaque Secret with `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. |
 | `#Sidecar` | `corev1.#Container` with `restartPolicy: Always` — place in `initContainers` for the native-sidecar form (k8s 1.29+). |
+| `#Restore` | One-shot `corev1.#Container` that runs `litestream restore` with `-if-db-not-exists` and `-if-replica-exists`. Place in `initContainers` *before* any container that reads the DB. Idempotent: no-op on an existing volume, no-op on an empty replica. |
 | `#ConfigVolume` | `corev1.#Volume` that mounts the rendered ConfigMap into the sidecar. |
 
 ## Limits
 
 - AWS-compatible replicas only (S3, R2, MinIO via custom endpoint).
 - One database per Litestream config.
-- No `#Restore` initContainer yet — a fresh pod will not automatically
-  rehydrate from S3. Add that yourself if you need it.
 
 ## Dependencies
 
