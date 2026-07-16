@@ -191,6 +191,39 @@ spec:
               name: data
       initContainers:
         - args:
+            - restore
+            - -config
+            - /etc/litestream/litestream.yml
+            - -if-db-not-exists
+            - -if-replica-exists
+            - /var/lib/talos/talos.db
+          envFrom:
+            - secretRef:
+                name: ory-talos-litestream-creds
+          image: litestream/litestream:0.5.14@sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941
+          imagePullPolicy: IfNotPresent
+          name: litestream-restore
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add: []
+              drop:
+                - ALL
+            privileged: false
+          volumeMounts:
+            - mountPath: /var/lib/talos
+              name: data
+            - mountPath: /etc/litestream
+              name: litestream-config
+              readOnly: true
+        - args:
             - migrate
             - up
           command:
@@ -219,6 +252,57 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/talos
               name: data
+        - args:
+            - replicate
+            - -config
+            - /etc/litestream/litestream.yml
+          envFrom:
+            - secretRef:
+                name: ory-talos-litestream-creds
+          image: litestream/litestream:0.5.14@sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          name: litestream
+          ports:
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          restartPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add: []
+              drop:
+                - ALL
+            privileged: false
+          volumeMounts:
+            - mountPath: /var/lib/talos
+              name: data
+            - mountPath: /etc/litestream
+              name: litestream-config
+              readOnly: true
       securityContext:
         fsGroup: 65532
         runAsGroup: 65532
@@ -231,6 +315,9 @@ spec:
         - name: jwks
           secret:
             secretName: ory-talos-jwks
+        - configMap:
+            name: ory-talos-litestream-config
+          name: litestream-config
   volumeClaimTemplates:
     - metadata:
         labels:
@@ -244,5 +331,41 @@ spec:
         resources:
           requests:
             storage: 1Gi
+---
+apiVersion: v1
+data:
+  litestream.yml: |
+    addr: :9090
+    snapshot:
+      interval: 24h
+      retention: 72h
+    dbs:
+      - path: /var/lib/talos/talos.db
+        replica:
+          endpoint: https://s3.example.org
+          type: s3
+          bucket: talos-backups-dev
+          path: ory/talos
+          region: eu-central-1
+          force-path-style: true
+          sync-interval: 1s
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-litestream-config
+  namespace: ory-talos
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-litestream-creds
+  namespace: ory-talos
+stringData:
+  AWS_ACCESS_KEY_ID: AKIAEXAMPLE
+  AWS_SECRET_ACCESS_KEY: test-secret
+type: Opaque
 ---
 

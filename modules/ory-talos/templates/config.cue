@@ -84,7 +84,6 @@ import (
 	}
 
 	podAnnotations?: {[string]: string}
-	podSecurityContext?: corev1.#PodSecurityContext
 
 	imagePullSecrets?: [...timoniv1.#ObjectReference]
 
