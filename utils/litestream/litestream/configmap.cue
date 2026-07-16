@@ -20,6 +20,10 @@ import (
 		labels: {[string]: string}
 	}
 	data: "litestream.yml": yaml.Marshal({
+		// Turn on the Prometheus metrics HTTP server. #Sidecar exposes
+		// containerPort 9090 and probes /metrics; without this the port
+		// would be closed and probes would fail.
+		addr: ":9090"
 		dbs: [{
 			path: #config.dbPath
 			replicas: [{

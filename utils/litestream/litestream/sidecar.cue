@@ -21,6 +21,25 @@ import corev1 "cue.dev/x/k8s.io/api/core/v1"
 	restartPolicy:   "Always"
 	args: ["replicate", "-config", "/etc/litestream/litestream.yml"]
 	envFrom: [{secretRef: name: #names.secret}]
+	// Litestream serves Prometheus metrics on :9090/metrics; expose the
+	// port so a downstream Service or ServiceMonitor can scrape by name.
+	ports: [{name: "metrics", containerPort: 9090, protocol: "TCP"}]
+	// /metrics doubles as a liveness signal — if the HTTP server is
+	// answering, the replicate loop is still running.
+	livenessProbe: {
+		httpGet: {path: "/metrics", port: "metrics"}
+		initialDelaySeconds: 10
+		periodSeconds:       30
+		timeoutSeconds:      5
+		failureThreshold:    3
+	}
+	readinessProbe: {
+		httpGet: {path: "/metrics", port: "metrics"}
+		initialDelaySeconds: 5
+		periodSeconds:       10
+		timeoutSeconds:      5
+		failureThreshold:    3
+	}
 	volumeMounts: [
 		#dataMount,
 		{name: "litestream-config", mountPath: "/etc/litestream", readOnly: true},
