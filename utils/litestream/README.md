@@ -32,7 +32,7 @@ import litestream "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
 | `#Names` | Shared naming contract (`configMap`, `secret`) so consumer and library agree on resource names. |
 | `#ConfigMap` | Renders the Litestream `litestream.yml` ConfigMap. |
 | `#Secret` | Renders an Opaque Secret with `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. |
-| `#Sidecar` | `corev1.#Container` with `restartPolicy: Always` — place in `initContainers` for the native-sidecar form (k8s 1.29+). |
+| `#Sidecar` | `corev1.#Container` with `restartPolicy: Always` — place in `initContainers` for the native-sidecar form (k8s 1.29+). Exposes the litestream `:9090` metrics port (named `metrics`) and probes `/metrics` for liveness and readiness. |
 | `#Restore` | One-shot `corev1.#Container` that runs `litestream restore` with `-if-db-not-exists` and `-if-replica-exists`. Place in `initContainers` *before* any container that reads the DB. Idempotent: no-op on an existing volume, no-op on an empty replica. |
 | `#ConfigVolume` | `corev1.#Volume` that mounts the rendered ConfigMap into the sidecar. |
 

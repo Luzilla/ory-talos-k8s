@@ -3,7 +3,10 @@
 // sidecar.
 package litestream_test
 
-import lib "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
+import (
+	lib "github.com/luzilla/ory-talos-k8s/utils/litestream/litestream"
+	"strings"
+)
 
 // Empty: defaults only. enabled=false → valid=false.
 tcEmpty: lib.#Config & {}
@@ -118,6 +121,9 @@ tcConfigMap: lib.#ConfigMap & {
 }
 tcConfigMap: metadata: name:         "foo-litestream-config"
 tcConfigMap: data: "litestream.yml": !=""
+// The rendered config must enable the metrics HTTP server on :9090
+// so #Sidecar's probes can reach it.
+tcConfigMapHasAddr: strings.Contains(tcConfigMap.data."litestream.yml", "addr: :9090") & true
 
 tcSecret: lib.#Secret & {
 	#config: tcFull
@@ -130,7 +136,7 @@ tcSecret: lib.#Secret & {
 		labels: app: "foo"
 	}
 }
-tcSecret: metadata: name:                   "foo-litestream-creds"
+tcSecret: metadata: name:                    "foo-litestream-creds"
 tcSecret: stringData: AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE"
 tcSecret: stringData: AWS_SECRET_ACCESS_KEY: "secret"
 
@@ -155,3 +161,23 @@ tcRestore: args: [
 	"-if-replica-exists",
 	"/var/lib/foo/db.sqlite",
 ]
+
+// #Sidecar exposes the litestream :9090 metrics port by name and
+// probes it for liveness and readiness. If any of these drift, the
+// downstream Service/ServiceMonitor wiring breaks silently — pin
+// them here.
+tcSidecar: lib.#Sidecar & {
+	#config: tcFull
+	#names: {
+		configMap: "foo-litestream-config"
+		secret:    "foo-litestream-creds"
+	}
+	#dataMount: {
+		name:      "data"
+		mountPath: "/var/lib/foo"
+	}
+}
+tcSidecar: name: "litestream"
+tcSidecar: ports: [{name: "metrics", containerPort: 9090, protocol: "TCP"}]
+tcSidecar: livenessProbe: httpGet: {path: "/metrics", port: "metrics"}
+tcSidecar: readinessProbe: httpGet: {path: "/metrics", port: "metrics"}

@@ -7,11 +7,11 @@ prefix:=utils/litestream
 help: ## Show help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-lint: ## cue fmt --check + cue vet on the library
-	cue fmt --check ./litestream
-	cue vet ./litestream
+lint: ## cue fmt --check on library and tests
+	cue fmt --check ./litestream ./tests
 
-test: lint ## run assertion-style tests in ./tests
+test: lint ## cue vet library and tests (runs the assertion suite)
+	cue vet ./litestream
 	cue vet ./tests
 
 release: ## tag and push utils/litestream/$(TAG)
