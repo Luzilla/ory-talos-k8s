@@ -29,4 +29,10 @@ values: {
 		storageClassName: ""
 		accessModes: ["ReadWriteOnce"]
 	}
+
+	// Litestream sidecar is opt-in. Set litestream.enabled=true and
+	// fill in replica.bucket/region and credentials to turn it on;
+	// the module reads back the library's `valid` flag before
+	// rendering the ConfigMap/Secret/sidecar.
+	litestream: enabled: false
 }
