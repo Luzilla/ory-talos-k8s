@@ -41,11 +41,14 @@ import (
 			}
 			spec: corev1.#PodSpec & {
 				automountServiceAccountToken: false
+				securityContext: {
+					runAsNonRoot: true
+					runAsUser:    65532
+					runAsGroup:   65532
+					fsGroup:      65532
+				}
 				if #config.imagePullSecrets != _|_ {
 					imagePullSecrets: #config.imagePullSecrets
-				}
-				if #config.podSecurityContext != _|_ {
-					securityContext: #config.podSecurityContext
 				}
 				initContainers: [
 					// Restore runs BEFORE db-init so migrations see a

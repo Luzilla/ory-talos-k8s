@@ -219,6 +219,11 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/talos
               name: data
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
       volumes:
         - configMap:
             name: ory-talos-config
