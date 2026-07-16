@@ -7,6 +7,6 @@ deps: {
 		v: "v0.7.0"
 	}
 	"github.com/luzilla/ory-talos-k8s/utils/litestream@v0": {
-		v: "v0.3.0"
+		v: "v0.4.0"
 	}
 }
