@@ -121,8 +121,8 @@ apiVersion: v1
 data:
   litestream.yml: |
     logging:
-      level: info
-      type: text
+      level: warn
+      type: pretty
       stderr: false
       source: false
     addr: :9090
@@ -144,7 +144,7 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-litestream-config-46f38e8a
+  name: ory-talos-litestream-config-6ae50560
   namespace: ory-talos
 ---
 apiVersion: v1
@@ -359,7 +359,7 @@ spec:
           secret:
             secretName: ory-talos-jwks-e2db02a4
         - configMap:
-            name: ory-talos-litestream-config-46f38e8a
+            name: ory-talos-litestream-config-6ae50560
           name: litestream-config
   volumeClaimTemplates:
     - metadata:

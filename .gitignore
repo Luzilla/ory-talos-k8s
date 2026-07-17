@@ -1,10 +1,8 @@
-# Documentation directory is intentionally untracked.
 /docs/
 
 # Build outputs
 /dist/
 
-# CUE module vendoring — user-local only. gen/ and pkg/ are committed.
 **/cue.mod/usr/
 
 # Editor / OS
@@ -12,11 +10,8 @@
 .vscode/
 .idea/
 
-# Local secrets used with @embed() — see Risks in spec
-secrets/
+/.envrc
 
 # Test artifacts
 /tmp/
 *.tmp
-
-tests/dev-values-litestream.local.cue

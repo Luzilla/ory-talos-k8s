@@ -1,8 +1,6 @@
-// Dev values with the Litestream sidecar enabled. Same base config as
-// dev-values.cue plus a fully-populated litestream block so `valid`
-// flips true and the sidecar / restore-init / ConfigMap / Secret all
-// render. Credentials and bucket are TEST-ONLY.
-
+// Golden fixture: base config from golden-values.cue plus a fully-populated
+// litestream block with hardcoded fake creds/bucket so the render is
+// deterministic and reproducible on every CI run.
 package main
 
 values: {
@@ -77,6 +75,10 @@ values: {
 
 	litestream: {
 		enabled: true
+		logging: {
+			level: "warn"
+			type:  "pretty"
+		}
 		replica: {
 			bucket:         "talos-backups-dev"
 			path:           "ory/talos"
