@@ -207,22 +207,12 @@ import (
 			format?: "json" | "text"
 		})
 
-		// Centralized secrets management. The HMAC secret seeds API key
-		// checksums, the macaroon root key, and the pagination cursor
-		// encryption key (via domain-separated derivation).
-		secrets!: close({
-			// HMAC secret configuration with rotation support. Also seeds the
-			// pagination cursor encryption key.
-			hmac!: close({
-				// Current HMAC secret for new key generation and checksum
-				// verification. Must be at least 32 characters.
-				current!: strings.MinRunes(32)
-
-				// Retired HMAC secrets that remain valid for verification during
-				// rotation
-				retired?: [...strings.MinRunes(32)]
-			})
-		})
+		// `secrets` is intentionally omitted from this schema. Talos loads
+		// secrets from env vars (SECRETS_HMAC_CURRENT,
+		// SECRETS_HMAC_RETIRED); the module renders those from a k8s
+		// Secret so nothing sensitive lands in the ConfigMap. Putting
+		// `secrets` into `values.config` here is a CUE error, which is
+		// what we want.
 
 		// Resource caps for the current subscription tier. Caps are
 		// emitted by the platform configuration pipeline based on the

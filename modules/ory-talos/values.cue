@@ -15,14 +15,18 @@ values: {
 		pullPolicy: "IfNotPresent"
 	}
 
-	// config and jwks have no sensible defaults — the user MUST supply both.
+	// config has no sensible default — the user MUST supply issuer/dsn.
 	// Placeholders keep `timoni mod vet` happy when run with no values.
+	// `secrets` is intentionally absent from the config schema; HMAC is
+	// injected as env from a k8s Secret. `jwks` is optional and unset by
+	// default. `hmac` defaults to "" so #Instance rejects an unfilled
+	// build with a clear error rather than shipping a known placeholder.
+	// `hmacRetired` is empty by default; add entries during rotation.
 	config: {
 		credentials: issuer: "https://talos.example.com"
-		db: dsn:                "sqlite3:///var/lib/talos/talos.db?_journal_mode=WAL"
-		secrets: hmac: current: "placeholder-vet-only-hmac-secret-32chars"
+		db: dsn: "sqlite3:///var/lib/talos/talos.db?_journal_mode=WAL"
 	}
-	jwks: "{\"keys\":[]}"
+	hmac: ""
 
 	persistence: {
 		size:             "1Gi"

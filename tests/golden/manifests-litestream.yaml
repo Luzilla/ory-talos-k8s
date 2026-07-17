@@ -48,16 +48,12 @@ data:
     log:
       level: info
       format: json
-    secrets:
-      hmac:
-        current: docker-compose-hmac-secret-minimum-32-chars-long
-        retired: []
 immutable: true
 kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-config-3c956873
+  name: ory-talos-config-dee98136
   namespace: ory-talos
 ---
 apiVersion: v1
@@ -66,22 +62,11 @@ kind: Secret
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-jwks-e2db02a4
+  name: ory-talos-hmac-e784a22a
   namespace: ory-talos
 stringData:
-  jwks.json: |-
-    {
-      "keys": [
-        {
-          "kty": "RSA",
-          "kid": "test-key-1",
-          "use": "sig",
-          "alg": "RS256",
-          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-          "e": "AQAB"
-        }
-      ]
-    }
+  SECRETS_HMAC_CURRENT: docker-compose-hmac-secret-minimum-32-chars-long
+  SECRETS_HMAC_RETIRED: previous-hmac-secret-minimum-32-chars-long,older-hmac-secret-minimum-32-chars-long-a
 ---
 apiVersion: v1
 kind: Service
@@ -116,6 +101,29 @@ spec:
       targetPort: 4420
   selector:
     app.kubernetes.io/name: ory-talos
+---
+apiVersion: v1
+immutable: true
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-jwks-e2db02a4
+  namespace: ory-talos
+stringData:
+  jwks.json: |-
+    {
+      "keys": [
+        {
+          "kty": "RSA",
+          "kid": "test-key-1",
+          "use": "sig",
+          "alg": "RS256",
+          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+          "e": "AQAB"
+        }
+      ]
+    }
 ---
 apiVersion: v1
 data:
@@ -183,6 +191,9 @@ spec:
             - serve
             - --config
             - /etc/talos/config.yaml
+          envFrom:
+            - secretRef:
+                name: ory-talos-hmac-e784a22a
           image: oryd/talos:v26.2.0@sha256:4bf9171a8da1ec75e05d6aa6e79afb8c7b5addb045e09b20c07c27f802795fb9
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -274,6 +285,9 @@ spec:
           env:
             - name: DB_DSN
               value: sqlite3:///var/lib/talos/talos.db?_journal_mode=WAL
+          envFrom:
+            - secretRef:
+                name: ory-talos-hmac-e784a22a
           image: oryd/talos:v26.2.0@sha256:4bf9171a8da1ec75e05d6aa6e79afb8c7b5addb045e09b20c07c27f802795fb9
           imagePullPolicy: IfNotPresent
           name: db-init
@@ -353,7 +367,7 @@ spec:
         runAsUser: 65532
       volumes:
         - configMap:
-            name: ory-talos-config-3c956873
+            name: ory-talos-config-dee98136
           name: config
         - name: jwks
           secret:

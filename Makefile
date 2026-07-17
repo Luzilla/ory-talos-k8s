@@ -74,7 +74,7 @@ run-dev: ## apply plain dev bundle against current Kubernetes context
 
 run-dev-litestream: ## apply litestream dev bundle, creds from env (ACCESS_KEY_ID, SECRET_ACCESS_KEY)
 	kubectl get namespace $(INSTANCE_NS) >/dev/null 2>&1 || kubectl create namespace $(INSTANCE_NS)
-	timoni bundle apply --overwrite-ownership -f $(BUNDLE_FILE_LS) --runtime-from-env
+	timoni bundle apply --force --overwrite-ownership -f $(BUNDLE_FILE_LS) --runtime-from-env
 
 setup: ## create kind cluster and switch context
 	@if ! command -v kind >/dev/null 2>&1; then \

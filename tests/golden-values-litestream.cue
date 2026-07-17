@@ -49,12 +49,14 @@ values: {
 			level:  "info"
 			format: "json"
 		}
-
-		secrets: hmac: {
-			current: "docker-compose-hmac-secret-minimum-32-chars-long"
-			retired: []
-		}
 	}
+
+	hmac: "docker-compose-hmac-secret-minimum-32-chars-long"
+
+	hmacRetired: [
+		"previous-hmac-secret-minimum-32-chars-long",
+		"older-hmac-secret-minimum-32-chars-long-a",
+	]
 
 	jwks: """
 		{
