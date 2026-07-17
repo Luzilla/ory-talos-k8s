@@ -107,19 +107,18 @@ tcFull: lib.#Config & {
 tcFull: valid: true
 
 // Render checks: ConfigMap data is non-empty, Secret carries the
-// expected env-var keys for the sidecar's envFrom.
+// expected env-var keys for the sidecar's envFrom. Names carry a hash
+// suffix produced by #ImmutableConfig — assert on the prefix.
 tcConfigMap: lib.#ConfigMap & {
 	#config: tcFull
-	#names: {
-		configMap: "foo-litestream-config"
-		secret:    "foo-litestream-creds"
-	}
-	metadata: {
+	#Meta: {
+		#Version:  "0.0.0"
+		name:      "foo"
 		namespace: "default"
 		labels: app: "foo"
 	}
 }
-tcConfigMap: metadata: name:         "foo-litestream-config"
+tcConfigMapNamePrefix: strings.HasPrefix(tcConfigMap.metadata.name, "foo-litestream-config-") & true
 tcConfigMap: data: "litestream.yml": !=""
 // The rendered config must enable the metrics HTTP server on :9090
 // so #Sidecar's probes can reach it.
@@ -127,16 +126,14 @@ tcConfigMapHasAddr: strings.Contains(tcConfigMap.data."litestream.yml", "addr: :
 
 tcSecret: lib.#Secret & {
 	#config: tcFull
-	#names: {
-		configMap: "foo-litestream-config"
-		secret:    "foo-litestream-creds"
-	}
-	metadata: {
+	#Meta: {
+		#Version:  "0.0.0"
+		name:      "foo"
 		namespace: "default"
 		labels: app: "foo"
 	}
 }
-tcSecret: metadata: name:                    "foo-litestream-creds"
+tcSecretNamePrefix: strings.HasPrefix(tcSecret.metadata.name, "foo-litestream-creds-") & true
 tcSecret: stringData: AWS_ACCESS_KEY_ID:     "AKIAEXAMPLE"
 tcSecret: stringData: AWS_SECRET_ACCESS_KEY: "secret"
 
@@ -145,8 +142,8 @@ tcSecret: stringData: AWS_SECRET_ACCESS_KEY: "secret"
 tcRestore: lib.#Restore & {
 	#config: tcFull
 	#names: {
-		configMap: "foo-litestream-config"
-		secret:    "foo-litestream-creds"
+		configMap: tcConfigMap.metadata.name
+		secret:    tcSecret.metadata.name
 	}
 	#dataMount: {
 		name:      "data"
@@ -169,8 +166,8 @@ tcRestore: args: [
 tcSidecar: lib.#Sidecar & {
 	#config: tcFull
 	#names: {
-		configMap: "foo-litestream-config"
-		secret:    "foo-litestream-creds"
+		configMap: tcConfigMap.metadata.name
+		secret:    tcSecret.metadata.name
 	}
 	#dataMount: {
 		name:      "data"
