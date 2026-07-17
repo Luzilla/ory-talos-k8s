@@ -335,6 +335,11 @@ spec:
 apiVersion: v1
 data:
   litestream.yml: |
+    logging:
+      level: info
+      type: text
+      stderr: false
+      source: false
     addr: :9090
     snapshot:
       interval: 24h
