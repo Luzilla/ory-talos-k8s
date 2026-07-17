@@ -103,36 +103,32 @@ import (
 #Instance: {
 	config: #Config
 
-	// Shared naming contract between StatefulSet, ConfigMap, and Secret
-	// for the Litestream sidecar. Kept here so both sides agree on the
-	// same strings.
-	_lsNames: ls.#Names & {
-		configMap: "\(config.metadata.name)-litestream-config"
-		secret:    "\(config.metadata.name)-litestream-creds"
-	}
-
 	objects: {
 		cm:   #ConfigMap & {#config:      config}
 		sec:  #Secret & {#config:         config}
 		svc:  #Service & {#config:        config}
 		svch: #ServiceHeadless & {#config: config}
-		sts:  #StatefulSet & {#config:    config, #lsNames: _lsNames}
 
 		if config.litestream.valid {
 			lsCm: ls.#ConfigMap & {
 				#config: config.litestream
-				#names:  _lsNames
-				metadata: {
-					namespace: config.metadata.namespace
-					labels:    config.metadata.labels
-				}
+				#Meta:   config.metadata
 			}
 			lsSec: ls.#Secret & {
 				#config: config.litestream
-				#names:  _lsNames
-				metadata: {
-					namespace: config.metadata.namespace
-					labels:    config.metadata.labels
+				#Meta:   config.metadata
+			}
+		}
+
+		// StatefulSet references the hashed names off the rendered
+		// litestream objects — a config or credentials change flips
+		// the name and triggers a rolling restart.
+		sts: #StatefulSet & {
+			#config: config
+			if config.litestream.valid {
+				#lsNames: {
+					configMap: objects.lsCm.metadata.name
+					secret:    objects.lsSec.metadata.name
 				}
 			}
 		}

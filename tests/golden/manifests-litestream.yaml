@@ -116,6 +116,48 @@ spec:
   selector:
     app.kubernetes.io/name: ory-talos
 ---
+apiVersion: v1
+data:
+  litestream.yml: |
+    logging:
+      level: info
+      type: text
+      stderr: false
+      source: false
+    addr: :9090
+    snapshot:
+      interval: 24h
+      retention: 72h
+    dbs:
+      - path: /var/lib/talos/talos.db
+        replica:
+          endpoint: https://s3.example.org
+          type: s3
+          bucket: talos-backups-dev
+          path: ory/talos
+          region: eu-central-1
+          force-path-style: true
+          sync-interval: 1s
+immutable: true
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-litestream-config-46f38e8a
+  namespace: ory-talos
+---
+apiVersion: v1
+immutable: true
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-litestream-creds-a49ed8b2
+  namespace: ory-talos
+stringData:
+  AWS_ACCESS_KEY_ID: AKIAEXAMPLE
+  AWS_SECRET_ACCESS_KEY: test-secret
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -199,7 +241,7 @@ spec:
             - /var/lib/talos/talos.db
           envFrom:
             - secretRef:
-                name: ory-talos-litestream-creds
+                name: ory-talos-litestream-creds-a49ed8b2
           image: litestream/litestream:0.5.14@sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941
           imagePullPolicy: IfNotPresent
           name: litestream-restore
@@ -258,7 +300,7 @@ spec:
             - /etc/litestream/litestream.yml
           envFrom:
             - secretRef:
-                name: ory-talos-litestream-creds
+                name: ory-talos-litestream-creds-a49ed8b2
           image: litestream/litestream:0.5.14@sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -316,7 +358,7 @@ spec:
           secret:
             secretName: ory-talos-jwks
         - configMap:
-            name: ory-talos-litestream-config
+            name: ory-talos-litestream-config-46f38e8a
           name: litestream-config
   volumeClaimTemplates:
     - metadata:
@@ -331,46 +373,5 @@ spec:
         resources:
           requests:
             storage: 1Gi
----
-apiVersion: v1
-data:
-  litestream.yml: |
-    logging:
-      level: info
-      type: text
-      stderr: false
-      source: false
-    addr: :9090
-    snapshot:
-      interval: 24h
-      retention: 72h
-    dbs:
-      - path: /var/lib/talos/talos.db
-        replica:
-          endpoint: https://s3.example.org
-          type: s3
-          bucket: talos-backups-dev
-          path: ory/talos
-          region: eu-central-1
-          force-path-style: true
-          sync-interval: 1s
-kind: ConfigMap
-metadata:
-  labels:
-    app.kubernetes.io/name: ory-talos
-  name: ory-talos-litestream-config
-  namespace: ory-talos
----
-apiVersion: v1
-kind: Secret
-metadata:
-  labels:
-    app.kubernetes.io/name: ory-talos
-  name: ory-talos-litestream-creds
-  namespace: ory-talos
-stringData:
-  AWS_ACCESS_KEY_ID: AKIAEXAMPLE
-  AWS_SECRET_ACCESS_KEY: test-secret
-type: Opaque
 ---
 
