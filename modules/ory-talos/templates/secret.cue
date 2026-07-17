@@ -1,18 +1,15 @@
 package templates
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	timoniv1 "timoni.sh/core/v1alpha1"
 )
 
-#Secret: corev1.#Secret & {
-	#config:    #Config
-	apiVersion: "v1"
-	kind:       "Secret"
-	metadata: {
-		name:      "\(#config.metadata.name)-jwks"
-		namespace: #config.metadata.namespace
-		labels:    #config.metadata.labels
-	}
-	type: "Opaque"
-	stringData: "jwks.json": #config.jwks
+// Hashed name means jwks rotations produce a new Secret and trigger a
+// rolling restart of the StatefulSet that mounts it.
+#Secret: timoniv1.#ImmutableConfig & {
+	#config: #Config
+	#Kind:   timoniv1.#SecretKind
+	#Meta:   #config.metadata
+	#Suffix: "-jwks"
+	#Data: "jwks.json": #config.jwks
 }

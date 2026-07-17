@@ -121,10 +121,14 @@ import (
 		}
 
 		// StatefulSet references the hashed names off the rendered
-		// litestream objects — a config or credentials change flips
-		// the name and triggers a rolling restart.
+		// ConfigMap / Secret objects — any content change flips the
+		// name and triggers a rolling restart.
 		sts: #StatefulSet & {
 			#config: config
+			#names: {
+				configMap: objects.cm.metadata.name
+				secret:    objects.sec.metadata.name
+			}
 			if config.litestream.valid {
 				#lsNames: {
 					configMap: objects.lsCm.metadata.name

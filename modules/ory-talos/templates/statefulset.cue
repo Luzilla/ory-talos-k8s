@@ -7,7 +7,14 @@ import (
 )
 
 #StatefulSet: appsv1.#StatefulSet & {
-	#config:  #Config
+	#config: #Config
+	// Hashed names of the module's own ConfigMap + Secret. Set by
+	// #Instance from the rendered objects so a config/jwks change
+	// forces a rolling restart.
+	#names: {
+		configMap: string
+		secret:    string
+	}
 	#lsNames: ls.#Names
 
 	// Bind the outer #config to a local name so nested `#config:` fields
@@ -118,11 +125,11 @@ import (
 				volumes: [
 					{
 						name: "config"
-						configMap: name: "\(#config.metadata.name)-config"
+						configMap: name: #names.configMap
 					},
 					{
 						name: "jwks"
-						secret: secretName: "\(#config.metadata.name)-jwks"
+						secret: secretName: #names.secret
 					},
 					if cfg.litestream.valid {
 						ls.#ConfigVolume & {#names: #lsNames}

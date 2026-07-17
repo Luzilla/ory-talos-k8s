@@ -52,19 +52,21 @@ data:
       hmac:
         current: docker-compose-hmac-secret-minimum-32-chars-long
         retired: []
+immutable: true
 kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-config
+  name: ory-talos-config-3c956873
   namespace: ory-talos
 ---
 apiVersion: v1
+immutable: true
 kind: Secret
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-jwks
+  name: ory-talos-jwks-e2db02a4
   namespace: ory-talos
 stringData:
   jwks.json: |-
@@ -80,7 +82,6 @@ stringData:
         }
       ]
     }
-type: Opaque
 ---
 apiVersion: v1
 kind: Service
@@ -352,11 +353,11 @@ spec:
         runAsUser: 65532
       volumes:
         - configMap:
-            name: ory-talos-config
+            name: ory-talos-config-3c956873
           name: config
         - name: jwks
           secret:
-            secretName: ory-talos-jwks
+            secretName: ory-talos-jwks-e2db02a4
         - configMap:
             name: ory-talos-litestream-config-46f38e8a
           name: litestream-config

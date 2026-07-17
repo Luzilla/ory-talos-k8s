@@ -22,8 +22,10 @@ CONFIG="${TMPDIR:-/tmp}/talos-config.json"
 curl -fsSL "$SCHEMA_URL" -o "$SCHEMA"
 
 # Extract the ConfigMap-rendered config.yaml string, then convert YAML -> JSON.
+# Selects by data key, not by name — object names carry a content hash now
+# (see timoniv1.#ImmutableConfig), so name-based selection is unreliable.
 yq eval-all '
-  select(.kind == "ConfigMap" and (.metadata.name | test("-config$"))).data["config.yaml"]
+  select(.kind == "ConfigMap" and .data["config.yaml"] != null).data["config.yaml"]
 ' "$MANIFESTS" | yq -p=yaml -o=json > "$CONFIG"
 
 if ! command -v npx >/dev/null 2>&1; then
