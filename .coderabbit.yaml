@@ -1,0 +1,7 @@
+reviews:
+  path_filters:
+    - "!utils/litestream/cue.mod/pkg/**"
+    - "!modules/ory-talos/cue.mod/pkg/**"
+    - "!modules/ory-talos/cue.mod/gen/**"
+    - "!dist/**"
+    - "!tests/golden/**"
