@@ -1,25 +1,21 @@
 package litestream
 
 import (
-	corev1 "cue.dev/x/k8s.io/api/core/v1"
+	timoniv1 "timoni.sh/core/v1alpha1"
 	"encoding/yaml"
 )
 
 // #ConfigMap renders the litestream.yml that the sidecar reads.
-// metadata.namespace and metadata.labels are left open — the consumer
-// fills them in to match its own object metadata.
-#ConfigMap: corev1.#ConfigMap & {
+// Uses timoni's #ImmutableConfig so the object name carries a hash of
+// the data — any config change produces a new name, which forces a
+// rolling restart of the pod that mounts it. Consumer supplies a base
+// name via #Meta.name and reads the hashed name off .metadata.name.
+#ConfigMap: timoniv1.#ImmutableConfig & {
 	#config: #Config
-	#names:  #Names
-
-	apiVersion: "v1"
-	kind:       "ConfigMap"
-	metadata: {
-		name:      #names.configMap
-		namespace: string
-		labels: {[string]: string}
-	}
-	data: "litestream.yml": yaml.Marshal({
+	#Kind:   timoniv1.#ConfigMapKind
+	#Meta:   timoniv1.#Metadata
+	#Suffix: "-litestream-config"
+	#Data: "litestream.yml": yaml.Marshal({
 		logging: {
 			level:  #config.logging.level
 			type:   #config.logging.type
