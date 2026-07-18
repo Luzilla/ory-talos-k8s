@@ -1,8 +1,5 @@
-// Local development values. Used by `make build`, `make test`, and the
-// golden manifests. The config + jwks here are TEST-ONLY — do not use in
-// production. The module's CUE schema (talos_schema.cue) validates this
-// at build time; scripts/validate-talos-config.sh adds a belt-and-braces
-// JSON Schema check against the rendered ConfigMap.
+// Golden fixture: values used by `make build` and `make test` to render
+// tests/golden/manifests.yaml.
 
 package main
 
@@ -52,12 +49,14 @@ values: {
 			level:  "info"
 			format: "json"
 		}
-
-		secrets: hmac: {
-			current: "docker-compose-hmac-secret-minimum-32-chars-long"
-			retired: []
-		}
 	}
+
+	hmac: "docker-compose-hmac-secret-minimum-32-chars-long"
+
+	hmacRetired: [
+		"previous-hmac-secret-minimum-32-chars-long",
+		"older-hmac-secret-minimum-32-chars-long-a",
+	]
 
 	jwks: """
 		{

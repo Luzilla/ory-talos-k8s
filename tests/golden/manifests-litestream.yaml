@@ -48,39 +48,25 @@ data:
     log:
       level: info
       format: json
-    secrets:
-      hmac:
-        current: docker-compose-hmac-secret-minimum-32-chars-long
-        retired: []
+immutable: true
 kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-config
+  name: ory-talos-config-dee98136
   namespace: ory-talos
 ---
 apiVersion: v1
+immutable: true
 kind: Secret
 metadata:
   labels:
     app.kubernetes.io/name: ory-talos
-  name: ory-talos-jwks
+  name: ory-talos-hmac-e784a22a
   namespace: ory-talos
 stringData:
-  jwks.json: |-
-    {
-      "keys": [
-        {
-          "kty": "RSA",
-          "kid": "test-key-1",
-          "use": "sig",
-          "alg": "RS256",
-          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
-          "e": "AQAB"
-        }
-      ]
-    }
-type: Opaque
+  SECRETS_HMAC_CURRENT: docker-compose-hmac-secret-minimum-32-chars-long
+  SECRETS_HMAC_RETIRED: previous-hmac-secret-minimum-32-chars-long,older-hmac-secret-minimum-32-chars-long-a
 ---
 apiVersion: v1
 kind: Service
@@ -116,6 +102,71 @@ spec:
   selector:
     app.kubernetes.io/name: ory-talos
 ---
+apiVersion: v1
+immutable: true
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-jwks-e2db02a4
+  namespace: ory-talos
+stringData:
+  jwks.json: |-
+    {
+      "keys": [
+        {
+          "kty": "RSA",
+          "kid": "test-key-1",
+          "use": "sig",
+          "alg": "RS256",
+          "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+          "e": "AQAB"
+        }
+      ]
+    }
+---
+apiVersion: v1
+data:
+  litestream.yml: |
+    logging:
+      level: warn
+      type: pretty
+      stderr: false
+      source: false
+    addr: :9090
+    snapshot:
+      interval: 24h
+      retention: 72h
+    dbs:
+      - path: /var/lib/talos/talos.db
+        replica:
+          endpoint: https://s3.example.org
+          type: s3
+          bucket: talos-backups-dev
+          path: ory/talos
+          region: eu-central-1
+          force-path-style: true
+          sync-interval: 1s
+immutable: true
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-litestream-config-6ae50560
+  namespace: ory-talos
+---
+apiVersion: v1
+immutable: true
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: ory-talos
+  name: ory-talos-litestream-creds-a49ed8b2
+  namespace: ory-talos
+stringData:
+  AWS_ACCESS_KEY_ID: AKIAEXAMPLE
+  AWS_SECRET_ACCESS_KEY: test-secret
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -140,6 +191,9 @@ spec:
             - serve
             - --config
             - /etc/talos/config.yaml
+          envFrom:
+            - secretRef:
+                name: ory-talos-hmac-e784a22a
           image: oryd/talos:v26.2.0@sha256:4bf9171a8da1ec75e05d6aa6e79afb8c7b5addb045e09b20c07c27f802795fb9
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -199,7 +253,7 @@ spec:
             - /var/lib/talos/talos.db
           envFrom:
             - secretRef:
-                name: ory-talos-litestream-creds
+                name: ory-talos-litestream-creds-a49ed8b2
           image: litestream/litestream:0.5.14@sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941
           imagePullPolicy: IfNotPresent
           name: litestream-restore
@@ -231,6 +285,9 @@ spec:
           env:
             - name: DB_DSN
               value: sqlite3:///var/lib/talos/talos.db?_journal_mode=WAL
+          envFrom:
+            - secretRef:
+                name: ory-talos-hmac-e784a22a
           image: oryd/talos:v26.2.0@sha256:4bf9171a8da1ec75e05d6aa6e79afb8c7b5addb045e09b20c07c27f802795fb9
           imagePullPolicy: IfNotPresent
           name: db-init
@@ -258,7 +315,7 @@ spec:
             - /etc/litestream/litestream.yml
           envFrom:
             - secretRef:
-                name: ory-talos-litestream-creds
+                name: ory-talos-litestream-creds-a49ed8b2
           image: litestream/litestream:0.5.14@sha256:ef0ac5958cf81725b7a85fb76f82ef71ace030db9429086eeefc59ee6ca53941
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -310,13 +367,13 @@ spec:
         runAsUser: 65532
       volumes:
         - configMap:
-            name: ory-talos-config
+            name: ory-talos-config-dee98136
           name: config
         - name: jwks
           secret:
-            secretName: ory-talos-jwks
+            secretName: ory-talos-jwks-e2db02a4
         - configMap:
-            name: ory-talos-litestream-config
+            name: ory-talos-litestream-config-6ae50560
           name: litestream-config
   volumeClaimTemplates:
     - metadata:
@@ -331,46 +388,5 @@ spec:
         resources:
           requests:
             storage: 1Gi
----
-apiVersion: v1
-data:
-  litestream.yml: |
-    logging:
-      level: info
-      type: text
-      stderr: false
-      source: false
-    addr: :9090
-    snapshot:
-      interval: 24h
-      retention: 72h
-    dbs:
-      - path: /var/lib/talos/talos.db
-        replica:
-          endpoint: https://s3.example.org
-          type: s3
-          bucket: talos-backups-dev
-          path: ory/talos
-          region: eu-central-1
-          force-path-style: true
-          sync-interval: 1s
-kind: ConfigMap
-metadata:
-  labels:
-    app.kubernetes.io/name: ory-talos
-  name: ory-talos-litestream-config
-  namespace: ory-talos
----
-apiVersion: v1
-kind: Secret
-metadata:
-  labels:
-    app.kubernetes.io/name: ory-talos
-  name: ory-talos-litestream-creds
-  namespace: ory-talos
-stringData:
-  AWS_ACCESS_KEY_ID: AKIAEXAMPLE
-  AWS_SECRET_ACCESS_KEY: test-secret
-type: Opaque
 ---
 

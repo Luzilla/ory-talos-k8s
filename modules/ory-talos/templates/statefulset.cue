@@ -7,7 +7,15 @@ import (
 )
 
 #StatefulSet: appsv1.#StatefulSet & {
-	#config:  #Config
+	#config: #Config
+	// Hashed names of the module's own ConfigMap + Secrets. Set by
+	// #Instance from the rendered objects so a config/hmac/jwks change
+	// forces a rolling restart. `jwks` is only set when config.jwks is.
+	#names: {
+		configMap: string
+		hmac:      string
+		jwks?:     string
+	}
 	#lsNames: ls.#Names
 
 	// Bind the outer #config to a local name so nested `#config:` fields
@@ -73,6 +81,9 @@ import (
 						env: [
 							{name: "DB_DSN", value: #config.config.db.dsn},
 						]
+						envFrom: [
+							{secretRef: name: #names.hmac},
+						]
 						volumeMounts: [_dataMount]
 						resources:       #config.initResources
 						securityContext: #config.securityContext
@@ -90,6 +101,9 @@ import (
 					image:           #config.image.reference
 					imagePullPolicy: #config.image.pullPolicy
 					args: ["serve", "--config", "/etc/talos/config.yaml"]
+					envFrom: [
+						{secretRef: name: #names.hmac},
+					]
 					ports: [
 						{name: "http", containerPort: 4420, protocol: "TCP"},
 					]
@@ -109,7 +123,9 @@ import (
 					}
 					volumeMounts: [
 						{name: "config", mountPath: "/etc/talos/config.yaml", subPath: "config.yaml", readOnly: true},
-						{name: "jwks", mountPath:   "/etc/talos/jwks.json", subPath:   "jwks.json", readOnly: true},
+						if cfg.jwks != _|_ {
+							{name: "jwks", mountPath: "/etc/talos/jwks.json", subPath: "jwks.json", readOnly: true}
+						},
 						_dataMount,
 					]
 					resources:       #config.resources
@@ -118,11 +134,13 @@ import (
 				volumes: [
 					{
 						name: "config"
-						configMap: name: "\(#config.metadata.name)-config"
+						configMap: name: #names.configMap
 					},
-					{
-						name: "jwks"
-						secret: secretName: "\(#config.metadata.name)-jwks"
+					if cfg.jwks != _|_ {
+						{
+							name: "jwks"
+							secret: secretName: #names.jwks
+						}
 					},
 					if cfg.litestream.valid {
 						ls.#ConfigVolume & {#names: #lsNames}

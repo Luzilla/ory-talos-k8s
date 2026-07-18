@@ -1,18 +1,16 @@
 package templates
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	timoniv1 "timoni.sh/core/v1alpha1"
 	"encoding/yaml"
 )
 
-#ConfigMap: corev1.#ConfigMap & {
-	#config:    #Config
-	apiVersion: "v1"
-	kind:       "ConfigMap"
-	metadata: {
-		name:      "\(#config.metadata.name)-config"
-		namespace: #config.metadata.namespace
-		labels:    #config.metadata.labels
-	}
-	data: "config.yaml": yaml.Marshal(#config.config)
+// Hashed name means every config change produces a new object and
+// triggers a rolling restart of the StatefulSet that mounts it.
+#ConfigMap: timoniv1.#ImmutableConfig & {
+	#config: #Config
+	#Kind:   timoniv1.#ConfigMapKind
+	#Meta:   #config.metadata
+	#Suffix: "-config"
+	#Data: "config.yaml": yaml.Marshal(#config.config)
 }

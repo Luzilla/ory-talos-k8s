@@ -38,11 +38,28 @@ import (
 
 	// Structured talos config. Validated against the upstream JSON schema
 	// (see talos_schema.cue). The init container's DB_DSN env is sourced
-	// from config.db.dsn so there is one source of truth.
+	// from config.db.dsn so there is one source of truth. Note: `secrets`
+	// is deliberately absent from the schema — HMAC comes from `hmac`
+	// below and is injected via env.
 	config!: #TalosConfig
 
-	// Body of jwks.json. Required.
-	jwks!: string
+	// HMAC secret. Rendered into a k8s Secret and injected as
+	// SECRETS_HMAC_CURRENT (Talos's env-var override). Must be >= 32
+	// chars when set. The empty default lets `timoni mod vet` pass with
+	// no user values; #Instance turns "empty at render time" into a
+	// build error so consumers cannot ship the placeholder.
+	hmac!: "" | strings.MinRunes(32)
+
+	// Retired HMAC secrets, kept for signature verification while
+	// callers migrate to a new `hmac`. Each entry must be >= 32 chars.
+	// Injected as SECRETS_HMAC_RETIRED (comma-separated) and only
+	// rendered when the list is non-empty.
+	hmacRetired: [...strings.MinRunes(32)]
+
+	// Body of jwks.json. Optional — derived tokens aren't wired yet, so
+	// most deployments won't need this. When set, rendered as a Secret and
+	// mounted at /etc/talos/jwks.json.
+	jwks?: string
 
 	persistence: {
 		size:             *"1Gi" | string
@@ -103,36 +120,51 @@ import (
 #Instance: {
 	config: #Config
 
-	// Shared naming contract between StatefulSet, ConfigMap, and Secret
-	// for the Litestream sidecar. Kept here so both sides agree on the
-	// same strings.
-	_lsNames: ls.#Names & {
-		configMap: "\(config.metadata.name)-litestream-config"
-		secret:    "\(config.metadata.name)-litestream-creds"
+	// Reject an empty hmac at render time. #Config allows "" so
+	// `timoni mod vet` (no user values) passes; a real build/apply
+	// without an override fails here with a clear message instead of
+	// silently shipping an empty Secret.
+	if config.hmac == "" {
+		_hmacRequired: "values.hmac must be set to a >=32 char secret" & ""
 	}
 
 	objects: {
-		cm:   #ConfigMap & {#config:      config}
-		sec:  #Secret & {#config:         config}
-		svc:  #Service & {#config:        config}
-		svch: #ServiceHeadless & {#config: config}
-		sts:  #StatefulSet & {#config:    config, #lsNames: _lsNames}
+		cm:      #ConfigMap & {#config:      config}
+		hmacSec: #HmacSecret & {#config:     config}
+		svc:     #Service & {#config:        config}
+		svch:    #ServiceHeadless & {#config: config}
+
+		if config.jwks != _|_ {
+			jwksSec: #JwksSecret & {#config: config}
+		}
 
 		if config.litestream.valid {
 			lsCm: ls.#ConfigMap & {
 				#config: config.litestream
-				#names:  _lsNames
-				metadata: {
-					namespace: config.metadata.namespace
-					labels:    config.metadata.labels
-				}
+				#Meta:   config.metadata
 			}
 			lsSec: ls.#Secret & {
 				#config: config.litestream
-				#names:  _lsNames
-				metadata: {
-					namespace: config.metadata.namespace
-					labels:    config.metadata.labels
+				#Meta:   config.metadata
+			}
+		}
+
+		// StatefulSet references the hashed names off the rendered
+		// ConfigMap / Secret objects — any content change flips the
+		// name and triggers a rolling restart.
+		sts: #StatefulSet & {
+			#config: config
+			#names: {
+				configMap: objects.cm.metadata.name
+				hmac:      objects.hmacSec.metadata.name
+				if config.jwks != _|_ {
+					jwks: objects.jwksSec.metadata.name
+				}
+			}
+			if config.litestream.valid {
+				#lsNames: {
+					configMap: objects.lsCm.metadata.name
+					secret:    objects.lsSec.metadata.name
 				}
 			}
 		}

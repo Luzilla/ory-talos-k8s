@@ -1,8 +1,6 @@
-// Dev values with the Litestream sidecar enabled. Same base config as
-// dev-values.cue plus a fully-populated litestream block so `valid`
-// flips true and the sidecar / restore-init / ConfigMap / Secret all
-// render. Credentials and bucket are TEST-ONLY.
-
+// Golden fixture: base config from golden-values.cue plus a fully-populated
+// litestream block with hardcoded fake creds/bucket so the render is
+// deterministic and reproducible on every CI run.
 package main
 
 values: {
@@ -51,12 +49,14 @@ values: {
 			level:  "info"
 			format: "json"
 		}
-
-		secrets: hmac: {
-			current: "docker-compose-hmac-secret-minimum-32-chars-long"
-			retired: []
-		}
 	}
+
+	hmac: "docker-compose-hmac-secret-minimum-32-chars-long"
+
+	hmacRetired: [
+		"previous-hmac-secret-minimum-32-chars-long",
+		"older-hmac-secret-minimum-32-chars-long-a",
+	]
 
 	jwks: """
 		{
@@ -77,6 +77,10 @@ values: {
 
 	litestream: {
 		enabled: true
+		logging: {
+			level: "warn"
+			type:  "pretty"
+		}
 		replica: {
 			bucket:         "talos-backups-dev"
 			path:           "ory/talos"

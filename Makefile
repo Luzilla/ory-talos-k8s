@@ -3,10 +3,10 @@ SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 MODULE_DIR       := ./modules/ory-talos
-BUNDLE_FILE      := ./docs/bundles/ory-talos.cue
-DEV_VALUES       := ./tests/dev-values.cue
-DEV_VALUES_LS    := ./tests/dev-values-litestream.cue
-DEV_VALUES_LOCAL := ./tests/dev-values-litestream.local.cue
+BUNDLE_FILE      := ./setup/bundle.cue
+BUNDLE_FILE_LS   := ./setup/bundle-litestream.cue
+GOLDEN_VALUES    := ./tests/golden-values.cue
+GOLDEN_VALUES_LS := ./tests/golden-values-litestream.cue
 INSTANCE_NAME    := ory-talos
 INSTANCE_NS      := ory-talos
 DIST_DIR         := ./dist
@@ -28,28 +28,32 @@ help: ## Show help
 
 lint: ## "cue fmt --check + cue vet"
 	cue fmt --check ./...
-	cue vet ./...
+	cue vet -c=false ./...
 
 build: $(MANIFESTS) $(MANIFESTS_LS) ## render manifests to
 
-$(MANIFESTS): $(shell find $(MODULE_DIR) -name '*.cue') $(DEV_VALUES)
+$(MANIFESTS): $(shell find $(MODULE_DIR) -name '*.cue') $(GOLDEN_VALUES)
 	mkdir -p $(DIST_DIR)
 	TIMONI_KUBE_VERSION=$(KUBE_VERSION) timoni build $(INSTANCE_NAME) $(MODULE_DIR) \
 		-n $(INSTANCE_NS) \
-		--values $(DEV_VALUES) \
+		--values $(GOLDEN_VALUES) \
 		> $(MANIFESTS)
 
-$(MANIFESTS_LS): $(shell find $(MODULE_DIR) -name '*.cue') $(DEV_VALUES_LS)
+$(MANIFESTS_LS): $(shell find $(MODULE_DIR) -name '*.cue') $(GOLDEN_VALUES_LS)
 	mkdir -p $(DIST_DIR)
 	TIMONI_KUBE_VERSION=$(KUBE_VERSION) timoni build $(INSTANCE_NAME) $(MODULE_DIR) \
 		-n $(INSTANCE_NS) \
-		--values $(DEV_VALUES_LS) \
+		--values $(GOLDEN_VALUES_LS) \
 		> $(MANIFESTS_LS)
 
 test: build ## mod vet + bundle vet + JSON Schema + golden diff + kubeconform
-	timoni mod vet $(MODULE_DIR)
+	TIMONI_KUBE_VERSION=$(KUBE_VERSION) timoni mod vet $(MODULE_DIR) -f $(GOLDEN_VALUES)
+	TIMONI_KUBE_VERSION=$(KUBE_VERSION) timoni mod vet $(MODULE_DIR) -f $(GOLDEN_VALUES_LS)
 	timoni bundle vet -f $(BUNDLE_FILE)
+	ACCESS_KEY_ID=vet-only SECRET_ACCESS_KEY=vet-only \
+		timoni bundle vet -f $(BUNDLE_FILE_LS) --runtime-from-env
 	./scripts/validate-talos-config.sh $(MANIFESTS)
+	./scripts/validate-talos-config.sh $(MANIFESTS_LS)
 	$(MAKE) verify MANIFEST=$(MANIFESTS)    GOLDEN=$(GOLDEN)
 	$(MAKE) verify MANIFEST=$(MANIFESTS_LS) GOLDEN=$(GOLDEN_LS)
 
@@ -64,22 +68,13 @@ update-golden: build ## re-generate from current templates
 	./scripts/normalize-manifests.sh $(MANIFESTS_LS) > $(GOLDEN_LS)
 	@echo "Regenerated $(GOLDEN) and $(GOLDEN_LS). Review the diff and stage it."
 
-run-dev: ## apply against current Kubernetes context
+run-dev: ## apply plain dev bundle against current Kubernetes context
 	kubectl get namespace $(INSTANCE_NS) >/dev/null 2>&1 || kubectl create namespace $(INSTANCE_NS)
-	timoni apply $(INSTANCE_NAME) $(MODULE_DIR) \
-		-n $(INSTANCE_NS) \
-		--values $(DEV_VALUES)
+	timoni bundle apply --overwrite-ownership -f $(BUNDLE_FILE)
 
-run-dev-litestream: ## apply with litestream enabled, using real creds from $(DEV_VALUES_LOCAL)
-	@if [ ! -f $(DEV_VALUES_LOCAL) ]; then \
-		echo "missing $(DEV_VALUES_LOCAL) — create it and retry" >&2; \
-		exit 1; \
-	fi
+run-dev-litestream: ## apply litestream dev bundle, creds from env (ACCESS_KEY_ID, SECRET_ACCESS_KEY)
 	kubectl get namespace $(INSTANCE_NS) >/dev/null 2>&1 || kubectl create namespace $(INSTANCE_NS)
-	timoni apply $(INSTANCE_NAME) $(MODULE_DIR) \
-		-n $(INSTANCE_NS) \
-		--values $(DEV_VALUES_LS) \
-		--values $(DEV_VALUES_LOCAL)
+	timoni bundle apply --force --overwrite-ownership -f $(BUNDLE_FILE_LS) --runtime-from-env
 
 setup: ## create kind cluster and switch context
 	@if ! command -v kind >/dev/null 2>&1; then \
