@@ -18,7 +18,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-      - uses: stefanprodan/timoni/actions/setup@dee817667ba9706be82c43de5a9f9a275490620d # v0.30.0
+      - uses: stefanprodan/timoni/actions/setup@32ee094d4ce5dad6a4c52627088932c4fde39617 # v0.32.0
 
       - name: Log in to ghcr.io
         run: |
