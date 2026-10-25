@@ -32,7 +32,7 @@ jobs:
         with:
           version: v0.10.0
 
-      - uses: stefanprodan/timoni/actions/setup@bb0f07cc4f586e91d5076e63e632cab8398fef41 # v0.34.0
+      - uses: stefanprodan/timoni/actions/setup@9f04f5c56a817024dce3f23bdbf8da4516fbe990 # v0.36.0
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
