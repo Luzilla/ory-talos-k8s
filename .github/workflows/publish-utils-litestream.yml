@@ -55,7 +55,7 @@ jobs:
 
       - run: cue vet ./litestream/...
 
-      - uses: cue-labs/registry-login-action@66d40052b0206031343e17173425fa10508968d0 # v1.0.3
+      - uses: cue-labs/registry-login-action@c7cf97db51448eaa8324e1ea4590deffa72df003 # v1.0.4
 
       - env:
           VERSION: ${{ steps.version.outputs.version }}
